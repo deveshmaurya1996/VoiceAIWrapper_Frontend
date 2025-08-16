@@ -6,8 +6,6 @@ import {
   Send, 
   X, 
   MessageSquare, 
-  User,
-  AlertCircle
 } from 'lucide-react';
 
 interface CommentFormProps {

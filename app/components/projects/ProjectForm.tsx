@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Project } from '@/app/types';
+import { Project, CreateProjectInput, UpdateProjectInput } from '@/app/types';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
@@ -8,27 +8,17 @@ import {
   Save, 
   X, 
   FolderOpen, 
-  Calendar, 
-  AlertCircle,
-  CheckCircle
 } from 'lucide-react';
 
 interface ProjectFormProps {
   project?: Project;
   organizationSlug: string;
-  onSubmit: (input: ProjectFormData) => void;
+  onSubmit: (input: ProjectFormSubmission) => void;
   onCancel: () => void;
   loading?: boolean;
 }
 
-interface ProjectFormData {
-  name: string;
-  description: string;
-  status: string;
-  dueDate: string;
-  organizationSlug: string;
-  id?: string;
-}
+type ProjectFormSubmission = CreateProjectInput | UpdateProjectInput;
 
 const ProjectForm: React.FC<ProjectFormProps> = ({
   project,
@@ -84,16 +74,23 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     e.preventDefault();
     
     if (validateForm()) {
-      const input: ProjectFormData = {
-        ...formData,
-        organizationSlug,
-      };
-      
       if (project) {
-        input.id = project.id;
+        // For updates, only send the fields that can be updated
+        const input = {
+          id: project.id,
+          name: formData.name,
+          description: formData.description,
+          status: formData.status,
+          dueDate: formData.dueDate,
+        };
+        onSubmit(input);
+      } else {
+        const input = {
+          ...formData,
+          organizationSlug,
+        };
+        onSubmit(input);
       }
-      
-      onSubmit(input);
     }
   };
 

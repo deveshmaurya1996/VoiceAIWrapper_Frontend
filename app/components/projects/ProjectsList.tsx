@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderOpen,
-  AlertCircle
 } from 'lucide-react';
 
 interface ProjectsListProps {
@@ -45,6 +44,8 @@ const ProjectsList: React.FC<ProjectsListProps> = ({
     error,
   } = useQuery<{ projects: Project[] }>(GET_PROJECTS, {
     variables: { organizationSlug },
+    fetchPolicy: 'cache-and-network',
+    notifyOnNetworkStatusChange: true,
   });
 
   const projects = useMemo(() => data?.projects || [], [data?.projects]);
@@ -78,7 +79,7 @@ const ProjectsList: React.FC<ProjectsListProps> = ({
     { value: 'CANCELLED', label: 'Cancelled' },
   ];
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="flex items-center justify-center min-h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -97,9 +98,14 @@ const ProjectsList: React.FC<ProjectsListProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       {/* Header */}
       <div className="flex items-center justify-between">
+        {loading && data && (
+          <div className="absolute top-4 right-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          </div>
+        )}
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"

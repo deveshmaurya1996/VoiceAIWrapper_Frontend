@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
 import { 
   CREATE_PROJECT, 
@@ -27,6 +27,7 @@ import TaskForm from './tasks/TaskForm';
 import CommentsDisplay from './tasks/CommentsDisplay';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
+import Toast from './ui/Toast';
 
 type View = 'dashboard' | 'projects' | 'tasks' | 'project-form' | 'task-form' | 'comments';
 
@@ -40,6 +41,7 @@ const App: React.FC<AppProps> = ({ organizationSlug }) => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Queries
   const { data: orgData } = useQuery(GET_ORGANIZATION, {
@@ -70,13 +72,16 @@ const App: React.FC<AppProps> = ({ organizationSlug }) => {
   const [updateTask, { loading: updatingTask }] = useMutation(UPDATE_TASK, {
     refetchQueries: [
       { query: GET_PROJECTS, variables: { organizationSlug } },
-      { query: GET_TASKS, variables: { projectId: selectedProject?.id } }
+      { query: GET_TASKS, variables: { projectId: selectedProject?.id, organizationSlug } },
+      { query: GET_ORGANIZATION_STATS, variables: { organizationSlug } }
     ]
   });
 
   const [createComment, { loading: creatingComment }] = useMutation(CREATE_TASK_COMMENT, {
     refetchQueries: [
-      { query: GET_TASKS, variables: { projectId: selectedProject?.id, organizationSlug } }
+      { query: GET_TASKS, variables: { projectId: selectedProject?.id, organizationSlug } },
+      { query: GET_PROJECTS, variables: { organizationSlug } },
+      { query: GET_ORGANIZATION_STATS, variables: { organizationSlug } }
     ]
   });
 
@@ -89,13 +94,22 @@ const App: React.FC<AppProps> = ({ organizationSlug }) => {
 
   const [deleteTask, { loading: deletingTask }] = useMutation(DELETE_TASK, {
     refetchQueries: [
-      { query: GET_TASKS, variables: { projectId: selectedProject?.id } },
+      { query: GET_TASKS, variables: { projectId: selectedProject?.id, organizationSlug } },
       { query: GET_PROJECTS, variables: { organizationSlug } },
       { query: GET_ORGANIZATION_STATS, variables: { organizationSlug } }
     ]
   });
 
   const organization = orgData?.organization;
+
+  // Toast helpers
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  }, []);
+
+  const hideToast = useCallback(() => {
+    setToast(null);
+  }, []);
 
   // Navigation handlers
   const handleViewDashboard = () => {
@@ -150,51 +164,89 @@ const App: React.FC<AppProps> = ({ organizationSlug }) => {
   const handleProjectSubmit = async (data: CreateProjectInput | UpdateProjectInput) => {
     try {
       if (editingProject) {
-        await updateProject({ variables: { input: data } });
+        const result = await updateProject({ variables: { input: data } });
+        if (result.data?.updateProject?.success) {
+          showToast('Project updated successfully!', 'success');
+          setCurrentView('projects');
+          setEditingProject(null);
+        } else if (result.data?.updateProject?.errors) {
+          showToast(result.data.updateProject.errors.join(', '), 'error');
+        }
       } else {
-        await createProject({ variables: { input: data } });
+        const result = await createProject({ variables: { input: data } });
+        if (result.data?.createProject?.success) {
+          showToast('Project created successfully!', 'success');
+          setCurrentView('projects');
+          setEditingProject(null);
+        } else if (result.data?.createProject?.errors) {
+          showToast(result.data.createProject.errors.join(', '), 'error');
+        }
       }
-      setCurrentView('projects');
-      setEditingProject(null);
     } catch (error) {
       console.error('Error saving project:', error);
+      showToast('Failed to save project. Please try again.', 'error');
     }
   };
 
   const handleTaskSubmit = async (data: CreateTaskInput | UpdateTaskInput) => {
     try {
       if (editingTask) {
-        await updateTask({ variables: { input: data } });
+        const result = await updateTask({ variables: { input: data } });
+        if (result.data?.updateTask?.success) {
+          showToast('Task updated successfully!', 'success');
+          setCurrentView('tasks');
+          setEditingTask(null);
+        } else if (result.data?.updateTask?.errors) {
+          showToast(result.data.updateTask.errors.join(', '), 'error');
+        }
       } else {
-        await createTask({ variables: { input: data } });
+        const result = await createTask({ variables: { input: data } });
+        if (result.data?.createTask?.success) {
+          showToast('Task created successfully!', 'success');
+          setCurrentView('tasks');
+          setEditingTask(null);
+        } else if (result.data?.createTask?.errors) {
+          showToast(result.data.createTask.errors.join(', '), 'error');
+        }
       }
-      setCurrentView('tasks');
-      setEditingTask(null);
     } catch (error) {
       console.error('Error saving task:', error);
+      showToast('Failed to save task. Please try again.', 'error');
     }
   };
 
   const handleCommentSubmit = async (data: CreateTaskCommentInput) => {
     try {
-      await createComment({ variables: { input: data } });
-      setCurrentView('tasks');
-      setSelectedTask(null);
+      const result = await createComment({ variables: { input: data } });
+      if (result.data?.createTaskComment?.success) {
+        showToast('Comment added successfully!', 'success');
+        setCurrentView('tasks');
+        setSelectedTask(null);
+      } else if (result.data?.createTaskComment?.errors) {
+        showToast(result.data.createTaskComment.errors.join(', '), 'error');
+      }
     } catch (error) {
       console.error('Error saving comment:', error);
+      showToast('Failed to add comment. Please try again.', 'error');
     }
   };
 
   const handleDeleteProject = async (projectId: string) => {
     if (window.confirm('Are you sure you want to delete this project? This will also delete all tasks associated with it.')) {
       try {
-        await deleteProject({ variables: { id: projectId } });
-        if (currentView === 'tasks' && selectedProject?.id === projectId) {
-          setCurrentView('projects');
-          setSelectedProject(null);
+        const result = await deleteProject({ variables: { id: projectId } });
+        if (result.data?.deleteProject?.success) {
+          showToast('Project deleted successfully!', 'success');
+          if (currentView === 'tasks' && selectedProject?.id === projectId) {
+            setCurrentView('projects');
+            setSelectedProject(null);
+          }
+        } else if (result.data?.deleteProject?.errors) {
+          showToast(result.data.deleteProject.errors.join(', '), 'error');
         }
       } catch (error) {
         console.error('Error deleting project:', error);
+        showToast('Failed to delete project. Please try again.', 'error');
       }
     }
   };
@@ -202,12 +254,18 @@ const App: React.FC<AppProps> = ({ organizationSlug }) => {
   const handleDeleteTask = async (task: Task) => {
     if (window.confirm('Are you sure you want to delete this task?')) {
       try {
-        await deleteTask({ variables: { id: task.id } });
-        if (selectedTask?.id === task.id) {
-          setSelectedTask(null);
+        const result = await deleteTask({ variables: { id: task.id } });
+        if (result.data?.deleteTask?.success) {
+          showToast('Task deleted successfully!', 'success');
+          if (selectedTask?.id === task.id) {
+            setSelectedTask(null);
+          }
+        } else if (result.data?.deleteTask?.errors) {
+          showToast(result.data.deleteTask.errors.join(', '), 'error');
         }
       } catch (error) {
         console.error('Error deleting task:', error);
+        showToast('Failed to delete task. Please try again.', 'error');
       }
     }
   };
@@ -341,6 +399,15 @@ const App: React.FC<AppProps> = ({ organizationSlug }) => {
           loading={creatingComment}
         />
       </Modal>
+
+      {/* Toast Notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
+      )}
     </div>
   );
 };

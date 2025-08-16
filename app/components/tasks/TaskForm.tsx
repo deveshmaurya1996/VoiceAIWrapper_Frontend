@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Task } from '@/app/types';
+import { Task, CreateTaskInput, UpdateTaskInput } from '@/app/types';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
@@ -8,31 +8,16 @@ import {
   Save, 
   X, 
   ClipboardList, 
-  Calendar, 
-  User,
-  AlertTriangle,
-  Clock,
-  Target
 } from 'lucide-react';
-
 interface TaskFormProps {
   task?: Task;
   projectId: string;
-  onSubmit: (input: TaskFormData) => void;
+  onSubmit: (input: TaskFormSubmission) => void;
   onCancel: () => void;
   loading?: boolean;
 }
 
-interface TaskFormData {
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  assigneeEmail: string;
-  dueDate: string;
-  projectId: string;
-  id?: string;
-}
+type TaskFormSubmission = CreateTaskInput | UpdateTaskInput;
 
 const TaskForm: React.FC<TaskFormProps> = ({
   task,
@@ -96,23 +81,30 @@ const TaskForm: React.FC<TaskFormProps> = ({
     e.preventDefault();
     
     if (validateForm()) {
-      const input: TaskFormData = {
-        ...formData,
-        projectId,
-      };
-      
       if (task) {
-        input.id = task.id;
+        const input = {
+          id: task.id,
+          title: formData.title,
+          description: formData.description,
+          status: formData.status,
+          priority: formData.priority,
+          assigneeEmail: formData.assigneeEmail,
+          dueDate: formData.dueDate,
+        };
+        onSubmit(input);
+      } else {
+        const input = {
+          ...formData,
+          projectId,
+        };
+        onSubmit(input);
       }
-      
-      onSubmit(input);
     }
   };
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -152,57 +144,56 @@ const TaskForm: React.FC<TaskFormProps> = ({
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Task Title */}
+    <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <Input
-            label="Task Title"
+      <Input
+        label="Task Title"
             placeholder="Enter task title..."
-            value={formData.title}
+        value={formData.title}
             onChange={(e) => handleChange('title', e.target.value)}
-            error={errors.title}
-            required
-          />
+        error={errors.title}
+        required
+      />
         </div>
 
         {/* Description */}
         <div>
-          <Textarea
-            label="Description"
+      <Textarea
+        label="Description"
             placeholder="Enter task description..."
-            value={formData.description}
+        value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             error={errors.description}
-            rows={4}
-          />
+        rows={4}
+      />
         </div>
 
         {/* Status and Priority Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Select
-              label="Status"
-              value={formData.status}
+        <Select
+          label="Status"
+          value={formData.status}
               onChange={(value) => handleChange('status', value)}
-              options={statusOptions}
-            />
+          options={statusOptions}
+        />
           </div>
           <div>
-            <Select
-              label="Priority"
-              value={formData.priority}
+        <Select
+          label="Priority"
+          value={formData.priority}
               onChange={(value) => handleChange('priority', value)}
-              options={priorityOptions}
-            />
+          options={priorityOptions}
+        />
           </div>
-        </div>
+      </div>
 
         {/* Assignee and Due Date Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Input
-              label="Assignee Email"
-              type="email"
+      <Input
+        label="Assignee Email"
+        type="email"
               placeholder="assignee@example.com"
               value={formData.assigneeEmail}
               onChange={(e) => handleChange('assigneeEmail', e.target.value)}
@@ -210,8 +201,8 @@ const TaskForm: React.FC<TaskFormProps> = ({
             />
           </div>
           <div>
-            <Input
-              label="Due Date"
+      <Input
+        label="Due Date"
               type="date"
               value={formData.dueDate}
               onChange={(e) => handleChange('dueDate', e.target.value)}
@@ -221,17 +212,17 @@ const TaskForm: React.FC<TaskFormProps> = ({
 
         {/* Form Actions */}
         <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={loading}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={loading}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             {loading ? (
@@ -242,12 +233,12 @@ const TaskForm: React.FC<TaskFormProps> = ({
             ) : (
               <div className="flex items-center">
                 <Save className="mr-2 h-4 w-4" />
-                {task ? 'Update Task' : 'Create Task'}
+          {task ? 'Update Task' : 'Create Task'}
               </div>
             )}
-          </Button>
-        </div>
-      </form>
+        </Button>
+      </div>
+    </form>
     </div>
   );
 };

@@ -1,13 +1,10 @@
 import React from 'react';
 import { Project } from '@/app/types';
-import { formatDate } from '@/app/lib/utils';
 import StatusBadge from '@/app/components/ui/StatusBadge';
 import Button from '@/app/components/ui/Button';
 import { 
   Eye, 
   Edit3, 
-  Calendar, 
-  User, 
   CheckCircle, 
   Clock,
   AlertCircle,

@@ -39,6 +39,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     error: statsError,
   } = useQuery<{ organization_stats: OrganizationStats }>(GET_ORGANIZATION_STATS, {
     variables: { organizationSlug },
+    fetchPolicy: 'cache-and-network',
+    notifyOnNetworkStatusChange: true,
   });
 
   const {
@@ -47,9 +49,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     error: projectsError,
   } = useQuery<{ projects: Project[] }>(GET_PROJECTS, {
     variables: { organizationSlug },
+    fetchPolicy: 'cache-and-network',
+    notifyOnNetworkStatusChange: true,
   });
 
-  if (statsLoading || projectsLoading) {
+  if ((statsLoading && !statsData) || (projectsLoading && !projectsData)) {
     return (
       <div className="flex items-center justify-center min-h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -71,7 +75,14 @@ const Dashboard: React.FC<DashboardProps> = ({
   const projects = projectsData?.projects || [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {/* Loading Indicators */}
+      {(statsLoading || projectsLoading) && (statsData || projectsData) && (
+        <div className="absolute top-4 right-4 z-10">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 bg-white p-1 rounded-full"></div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
         <div className="flex items-center justify-between">
